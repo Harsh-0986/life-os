@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { formatBytes, cn } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -34,7 +34,7 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
 
       for (const file of Array.from(incoming)) {
         if (next.length >= MAX_FILES) {
-          setError(`You can upload ${MAX_FILES} images at a time.`);
+          setError(`A sheet holds ${MAX_FILES} frames.`);
           break;
         }
         if (!ACCEPTED.includes(file.type)) {
@@ -45,31 +45,12 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
           setError(`${file.name} is ${formatBytes(file.size)}; the limit is 10 MB.`);
           continue;
         }
-        // Guard against the same file being added twice.
         if (next.some((existing) => existing.file.name === file.name)) continue;
 
-        next.push({
-          file,
-          previewUrl: URL.createObjectURL(file),
-        });
+        next.push({ file, previewUrl: URL.createObjectURL(file) });
       }
 
       onChange(next);
-    },
-    [images, onChange],
-  );
-
-  const removeAt = useCallback(
-    (index: number) => {
-      setError(null);
-      onChange(
-        images
-          .filter((_, i) => i !== index)
-          .map((image) => {
-            URL.revokeObjectURL(image.previewUrl);
-            return image;
-          }),
-      );
     },
     [images, onChange],
   );
@@ -80,9 +61,15 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
     onChange([]);
   }, [images, onChange]);
 
+  const full = images.length >= MAX_FILES;
+
   return (
-    <div className="space-y-4">
-      <div
+    <div>
+      {/*
+        Dashed rule rather than a filled dropzone. The sheet is the surface;
+        this is an empty area waiting for frames, not a separate object.
+      */}
+      <label
         onDragOver={(event) => {
           event.preventDefault();
           if (!disabled) setDragging(true);
@@ -94,10 +81,10 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
           if (!disabled) addFiles(event.dataTransfer.files);
         }}
         className={cn(
-          "rounded-xl border-2 border-dashed px-6 py-12 text-center transition",
+          "block cursor-pointer border-y-2 border-dashed px-6 py-14 text-center transition-colors",
           dragging
-            ? "border-emerald-400/70 bg-emerald-500/10"
-            : "border-neutral-700 bg-neutral-900/40",
+            ? "border-grease bg-grease-wash"
+            : "border-rule-strong bg-paper-raised hover:border-ink-3",
           disabled && "pointer-events-none opacity-50",
         )}
       >
@@ -106,7 +93,8 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
           type="file"
           accept={ACCEPTED.join(",")}
           multiple
-          className="hidden"
+          className="sr-only"
+          disabled={disabled}
           onChange={(event) => {
             addFiles(event.target.files);
             // Reset so re-picking the same file still fires a change event.
@@ -114,47 +102,45 @@ export function UploadZone({ images, onChange, disabled }: UploadZoneProps) {
           }}
         />
 
-        <div className="space-y-3">
-          <p className="text-lg font-medium text-neutral-100">
-            {images.length > 0
-              ? "Add more screenshots"
-              : "Drop screenshots here"}
-          </p>
-          <p className="mx-auto max-w-md text-sm text-neutral-400">
-            Assignments, calendars, group chats, invoices. Up to {MAX_FILES}{" "}
-            images, 10 MB each. Gemma reads them all together.
-          </p>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={disabled || images.length >= MAX_FILES}
-            className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Browse files
-          </button>
-        </div>
-      </div>
+        <p className="text-lg font-semibold tracking-tight text-ink">
+          {images.length > 0 ? "Add more frames" : "Lay your screenshots on the sheet"}
+        </p>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-2">
+          Assignments, calendars, group chats, anything you are juggling. Up to{" "}
+          {MAX_FILES} images, 10 MB each. Gemma reads every frame at once, so it
+          can find the clashes between them.
+        </p>
+        <span className="sleeve-label mt-5 inline-block border border-ink px-4 py-2 text-ink">
+          Choose files
+        </span>
+      </label>
 
       {error && (
-        <p role="alert" className="text-sm text-rose-400">
+        <p role="alert" className="mt-3 text-sm font-medium text-grease">
           {error}
         </p>
       )}
 
       {images.length > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-400">
-            {images.length} of {MAX_FILES} images selected
+        <div className="mt-4 flex items-center justify-between">
+          <p className="sleeve-label text-ink-2">
+            {images.length} of {MAX_FILES} frames
           </p>
           <button
             type="button"
             onClick={clearAll}
             disabled={disabled}
-            className="text-sm text-neutral-400 underline-offset-4 transition hover:text-neutral-200 hover:underline disabled:opacity-40"
+            className="sleeve-label text-ink-2 underline-offset-4 hover:text-grease hover:underline disabled:opacity-40"
           >
-            Clear all
+            Clear sheet
           </button>
         </div>
+      )}
+
+      {full && (
+        <p className="mt-1 text-xs text-ink-3">
+          The sheet is full. Remove a frame to swap one out.
+        </p>
       )}
     </div>
   );

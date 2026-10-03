@@ -1,24 +1,98 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
+/*
+  LifeOS — "contact sheet" direction.
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  The product takes photographs (screenshots), lays them on one surface, and
+  annotates that surface. So the interface is a photographic contact sheet:
+  numbered frames, sprocket edges, hairline rules dividing sections, and a
+  grease pencil reserved exclusively for conflicts.
+
+  Rules the system follows:
+  - One continuous sheet. Sections are divided by hairlines, never by floating
+    cards. Cards would flatten the hierarchy into identical boxes.
+  - Grease pencil (--grease) appears ONLY on conflicts. It is the single bold
+    element in the entire design.
+  - Numerals appear only where content is genuinely a sequence: frame numbers
+    and plan step numbers.
+*/
+
+@theme {
+  /* Cool photographic paper under fluorescent light. Deliberately not warm
+     cream — that pairing is a house default. */
+  --color-paper: #e9ebee;
+  --color-paper-raised: #f4f5f7;
+  --color-paper-sunk: #dfe2e6;
+
+  /* Densite ink used for letterpress-style labels. */
+  --color-ink: #14171b;
+  --color-ink-2: #454c55;
+  --color-ink-3: #767e88;
+
+  /* Hairlines do the structural work that borders usually do. */
+  --color-rule: #c3c8ce;
+  --color-rule-strong: #9aa1aa;
+
+  /* Grease pencil. Reserved for conflicts and nothing else. */
+  --color-grease: #c4361c;
+  --color-grease-wash: #c4361c14;
+
+  /* Film base / negative strip. */
+  --color-film: #1b1f24;
+
+  /* Single functional colour for focus and interactive affordances. */
+  --color-signal: #1b4d8f;
+
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  /* Photographic paper does not stretch. */
+  text-rendering: optimizeLegibility;
 }
 
-/* Respect users who ask the OS to reduce motion. */
+/*
+  Frame numerals and step numerals: small, dense, tracked out like the
+  pre-printed text on a film sleeve. Not monospace — monospaced data labels
+  are their own kind of default.
+*/
+@utility sleeve-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/*
+  The sprocket edge of 35mm film. Drawn with a repeating gradient rather than
+  an image asset so it costs nothing.
+*/
+@utility sprocket-edge {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-ink) 0px,
+    var(--color-ink) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  height: 6px;
+}
+
+/* Visible keyboard focus everywhere, drawn as a registration mark. */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+/* Selection matches the grease pencil. */
+::selection {
+  background: var(--color-grease);
+  color: var(--color-paper-raised);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

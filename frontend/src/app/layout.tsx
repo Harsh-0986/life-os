@@ -1,22 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo } from "next/font/google";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+/*
+  One family, pushed hard on weight, width, and tracking.
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  Archivo is a grotesque with a slightly condensed skeleton, which reads as
+  stamped film-sleeve text when tracked out and set small. Using one family
+  avoids the display/body split that most generated pages reach for.
+*/
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "LifeOS — multimodal personal planning",
+  title: "LifeOS",
   description:
-    "Upload screenshots of assignments, calendars, and messages. Gemma reads them together and produces an action plan.",
+    "Lay out your screenshots on one sheet. Gemma reads them together and marks what conflicts.",
 };
 
 export default function RootLayout({
@@ -26,11 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-      >
-        {children}
-      </body>
+      <body className={`${archivo.variable} antialiased`}>{children}</body>
     </html>
   );
 }
