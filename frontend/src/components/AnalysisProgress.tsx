@@ -2,28 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { cn } from "@/lib/utils";
+/*
+  The annotation pass.
+
+  A contact sheet is only useful once someone has marked it up, so this reads
+  as the marking-up step. SPEC §29 requires these five labels, and they are
+  driven by a timer rather than extra model calls: the request is a single
+  Gemma call, so a progress bar that reflected real stages would be lying.
+*/
 
 const STAGES = [
-  "Images received",
-  "Understanding context",
-  "Extracting information",
-  "Detecting conflicts",
-  "Building action plan",
+  "Frames received",
+  "Reading the sheet",
+  "Marking dates and tasks",
+  "Circling clashes",
+  "Writing the caption",
 ] as const;
 
-interface AnalysisProgressProps {
-  /** Total analysis time in seconds; drives the elapsed counter. */
-  estimateSeconds?: number;
-}
-
-export function AnalysisProgress({ estimateSeconds = 30 }: AnalysisProgressProps) {
+export function AnalysisProgress() {
   const [stage, setStage] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const startedAt = useRef<number>(0);
+  const startedAt = useRef(0);
 
-  // SPEC §29: these are presentation states driven by a timer, not extra
-  // model calls. The request itself is a single Gemma call.
   useEffect(() => {
     // Set inside the effect rather than during render to keep render pure.
     startedAt.current = Date.now();
@@ -31,77 +31,77 @@ export function AnalysisProgress({ estimateSeconds = 30 }: AnalysisProgressProps
     const timer = window.setInterval(() => {
       const seconds = Math.floor((Date.now() - startedAt.current) / 1000);
       setElapsed(seconds);
-
-      // Ramp toward the final stage but never complete it, so the indicator
-      // stays honest about work that is still in flight.
-      const target = Math.min(STAGES.length - 1, Math.floor(seconds / 8));
-      setStage((current) => Math.max(current, target));
+      // Ramp toward the last label but never complete it, so the indicator
+      // stays honest about work still in flight.
+      setStage((current) =>
+        Math.max(current, Math.min(STAGES.length - 1, Math.floor(seconds / 7))),
+      );
     }, 1000);
 
     return () => window.clearInterval(timer);
   }, []);
 
-  const remaining = Math.max(0, estimateSeconds - elapsed);
-
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-6">
-      <div className="mb-5 flex items-baseline justify-between">
-        <h3 className="font-medium text-neutral-100">Analyzing your images</h3>
-        <span className="text-sm tabular-nums text-neutral-500">
-          {elapsed}s
-          {remaining > 0 && ` · ~${remaining}s left`}
+    <section className="mt-10 border-y-2 border-ink/15 py-6">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-xl font-semibold tracking-tight text-ink">
+          Reading your sheet
+        </h2>
+        <span className="sleeve-label text-ink-2 tabular-nums">
+          {elapsed}s elapsed
         </span>
       </div>
 
-      <ol className="space-y-2.5">
+      <ol className="mt-5 space-y-0">
         {STAGES.map((label, index) => {
-          const state =
-            index < stage ? "done" : index === stage ? "active" : "pending";
+          const done = index < stage;
+          const active = index === stage;
 
           return (
             <li
               key={label}
               className={cn(
-                "flex items-center gap-3 text-sm transition-colors",
-                state === "done" && "text-neutral-400",
-                state === "active" && "text-neutral-100",
-                state === "pending" && "text-neutral-600",
+                "flex items-center gap-4 border-t border-rule py-2.5 text-sm",
+                done && "text-ink-3",
+                active && "font-semibold text-ink",
+                !done && !active && "text-ink-3/60",
               )}
             >
               <span
                 className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                  state === "done" && "bg-emerald-500/20 text-emerald-400",
-                  state === "active" && "bg-neutral-100 text-neutral-900",
-                  state === "pending" && "bg-neutral-800 text-neutral-500",
+                  "sleeve-label w-6 shrink-0 tabular-nums",
+                  done && "text-ink-3",
+                  active && "text-grease",
+                  !done && !active && "text-ink-3/50",
                 )}
                 aria-hidden="true"
               >
-                {state === "done" ? (
-                  <svg
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    className="h-3 w-3"
-                  >
-                    <path d="M3 8.5l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : state === "active" ? (
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-neutral-900" />
-                ) : (
-                  index + 1
-                )}
+                {String(index + 1).padStart(2, "0")}
               </span>
-              {label}
+
+              <span className="flex-1">{label}</span>
+
+              {active && (
+                <span
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-grease"
+                  aria-hidden="true"
+                />
+              )}
+              {done && <span className="sleeve-label text-ink-3">done</span>}
             </li>
           );
         })}
       </ol>
 
-      <p className="mt-5 text-xs text-neutral-500">
-        One multimodal request. Gemma reads every image together.
+      <p className="mt-5 text-sm text-ink-2">
+        One request, every frame at once. Priorities and conflicts are then worked
+        out in Python, not guessed at.
       </p>
-    </div>
+    </section>
   );
+}
+
+/* Kept local: only this file needs the merge helper. */
+function cn(...classes: (string | false | undefined)[]): string {
+  return classes.filter(Boolean).join(" ");
 }

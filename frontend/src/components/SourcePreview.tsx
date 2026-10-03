@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 
-import { cn } from "@/lib/utils";
 import type { SelectedImage } from "./UploadZone";
 
 interface SourcePreviewProps {
@@ -12,10 +11,11 @@ interface SourcePreviewProps {
 }
 
 /**
- * Full-size view of the image an extracted item came from (SPEC §30).
+ * Full-size view of the frame an item was read from.
  *
- * Rendered as a dialog so the user can trace any task or deadline back to the
- * screenshot it was read from — the check that the extraction is trustworthy.
+ * This is the trust surface of the whole product: every extracted task,
+ * deadline, and event can be traced back to the exact screenshot it came
+ * from (SPEC §30). It opens over the sheet like a loupe on a light table.
  */
 export function SourcePreview({
   images,
@@ -30,13 +30,13 @@ export function SourcePreview({
     };
 
     window.addEventListener("keydown", onKeyDown);
-    // Prevent the page behind the overlay from scrolling.
-    const previousOverflow = document.body.style.overflow;
+    // Stop the page behind the loupe from scrolling.
+    const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previous;
     };
   }, [activeSource, onClose]);
 
@@ -48,42 +48,28 @@ export function SourcePreview({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Source image ${activeSource}`}
-      className="fixed inset-0 z-50 flex flex-col bg-neutral-950/90 backdrop-blur-sm"
+      aria-label={`Frame ${activeSource}`}
+      className="fixed inset-0 z-50 flex flex-col bg-film/95"
       onClick={onClose}
     >
-      <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-paper/15 px-5 py-3">
         <div className="min-w-0">
-          <p className="truncate font-mono text-sm text-neutral-200">
-            {activeSource}
-          </p>
-          <p className="text-xs text-neutral-500">Source image</p>
+          <p className="sleeve-label text-paper/50">Source frame</p>
+          <p className="truncate text-sm text-paper">{activeSource}</p>
         </div>
 
         <button
           type="button"
           onClick={onClose}
           autoFocus
-          className={cn(
-            "rounded-lg p-2 text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100",
-          )}
-          aria-label="Close source preview"
+          className="sleeve-label border border-paper/30 px-3 py-1.5 text-paper transition hover:border-grease hover:text-grease"
         >
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="h-5 w-5"
-            aria-hidden="true"
-          >
-            <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
-          </svg>
+          Close
         </button>
       </div>
 
       <div
-        className="flex flex-1 items-center justify-center overflow-auto p-4"
+        className="flex flex-1 items-center justify-center overflow-auto p-5"
         onClick={(event) => event.stopPropagation()}
       >
         {/* Object URL from the validated upload; a plain img is correct here. */}
@@ -91,7 +77,7 @@ export function SourcePreview({
         <img
           src={image.previewUrl}
           alt={image.file.name}
-          className="max-h-full max-w-full rounded-lg object-contain"
+          className="max-h-full max-w-full border border-paper/20 object-contain"
         />
       </div>
     </div>

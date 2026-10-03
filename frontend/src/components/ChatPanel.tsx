@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { askQuestion } from "@/lib/api";
 import type { ChatContext } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,8 +17,8 @@ interface ChatPanelProps {
 
 const SUGGESTIONS = [
   "What should I do first?",
-  "What is overdue or due today?",
-  "Am I double-booked anywhere?",
+  "What is due in the next 24 hours?",
+  "Where am I double-booked?",
 ];
 
 export function ChatPanel({ context, disabled }: ChatPanelProps) {
@@ -34,10 +33,7 @@ export function ChatPanel({ context, disabled }: ChatPanelProps) {
 
     setError(null);
     setInput("");
-    setMessages((current) => [
-      ...current,
-      { role: "user", content: trimmed },
-    ]);
+    setMessages((current) => [...current, { role: "user", content: trimmed }]);
     setPending(true);
 
     try {
@@ -53,22 +49,22 @@ export function ChatPanel({ context, disabled }: ChatPanelProps) {
   }
 
   return (
-    <section className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
-      <h3 className="font-medium text-neutral-100">Ask about your analysis</h3>
-      <p className="mt-1 text-xs text-neutral-500">
-        Answers come only from what Gemma extracted. It will say so if the
-        information is not enough.
+    <section className="border-t-2 border-ink pt-8">
+      <h2 className="sleeve-label mb-1 text-ink-3">Ask about this sheet</h2>
+      <p className="mb-5 text-sm text-ink-2">
+        Answers come only from what was extracted. If the sheet does not say, the
+        assistant will tell you rather than guess.
       </p>
 
       {messages.length === 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mb-5 flex flex-wrap gap-2">
           {SUGGESTIONS.map((suggestion) => (
             <button
               key={suggestion}
               type="button"
               onClick={() => send(suggestion)}
               disabled={disabled || pending}
-              className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-neutral-500 hover:text-neutral-100 disabled:opacity-40"
+              className="border border-rule px-3 py-1.5 text-sm text-ink-2 transition hover:border-ink hover:text-ink disabled:opacity-40"
             >
               {suggestion}
             </button>
@@ -77,27 +73,31 @@ export function ChatPanel({ context, disabled }: ChatPanelProps) {
       )}
 
       {messages.length > 0 && (
-        <ul className="mt-4 space-y-3">
+        <ul className="mb-5 max-w-2xl space-y-4">
           {messages.map((message, index) => (
             <li
               key={index}
-              className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed",
+              className={
                 message.role === "user"
-                  ? "ml-auto bg-neutral-100 text-neutral-900"
-                  : "bg-neutral-800/70 text-neutral-200",
-              )}
+                  ? "ml-auto max-w-md border border-ink bg-ink px-4 py-2.5 text-paper"
+                  : "max-w-2xl border-l-2 border-rule-strong pl-4 text-ink"
+              }
             >
-              {message.content}
+              <span className="sleeve-label mb-1 block text-ink-3">
+                {message.role === "user" ? "You" : "Assistant"}
+              </span>
+              <span className="text-sm leading-relaxed whitespace-pre-wrap">
+                {message.content}
+              </span>
             </li>
           ))}
 
           {pending && (
-            <li className="flex gap-1.5 px-1" aria-label="Assistant is thinking">
-              {[0, 150, 300].map((delay) => (
+            <li className="flex items-center gap-1.5 pl-4" aria-label="Thinking">
+              {[0, 160, 320].map((delay) => (
                 <span
                   key={delay}
-                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-500"
+                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-ink-3"
                   style={{ animationDelay: `${delay}ms` }}
                 />
               ))}
@@ -107,20 +107,20 @@ export function ChatPanel({ context, disabled }: ChatPanelProps) {
       )}
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-rose-400">
+        <p role="alert" className="mb-5 text-sm font-medium text-grease">
           {error}
         </p>
       )}
 
       <form
-        className="mt-4 flex gap-2"
+        className="flex max-w-2xl gap-3"
         onSubmit={(event) => {
           event.preventDefault();
           void send(input);
         }}
       >
         <label htmlFor="chat-question" className="sr-only">
-          Ask a question
+          Ask a question about your analysis
         </label>
         <input
           id="chat-question"
@@ -128,12 +128,12 @@ export function ChatPanel({ context, disabled }: ChatPanelProps) {
           onChange={(event) => setInput(event.target.value)}
           placeholder="What should I do first?"
           disabled={disabled || pending}
-          className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+          className="min-w-0 flex-1 border border-rule bg-paper-raised px-4 py-2.5 text-sm text-ink placeholder:text-ink-3 focus:border-ink focus:outline-none disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={disabled || pending || !input.trim()}
-          className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="sleeve-label border-2 border-ink px-5 py-2.5 text-ink transition hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
         >
           Ask
         </button>

@@ -4,18 +4,29 @@ import { useCallback, useState } from "react";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { ChatPanel } from "@/components/ChatPanel";
-import {
-  ConflictCard,
-  DeadlineCard,
-  EventCard,
-  PlanCard,
-  TaskCard,
-} from "@/components/Cards";
 import { ImagePreview } from "@/components/ImagePreview";
+import {
+  ConflictMark,
+  DeadlineRow,
+  EventRow,
+  PlanRow,
+  TaskRow,
+} from "@/components/Rows";
 import { SourcePreview } from "@/components/SourcePreview";
 import { UploadZone, type SelectedImage } from "@/components/UploadZone";
 import { analyzeImages } from "@/lib/api";
 import type { AppState, LifeOSAnalysis } from "@/lib/types";
+
+/** Maps a source filename to its frame position, so citations read as numbers. */
+function useFrameIndex(images: SelectedImage[]) {
+  return useCallback(
+    (source: string) =>
+      images.findIndex((image) => image.file.name === source) >= 0
+        ? images.findIndex((image) => image.file.name === source)
+        : undefined,
+    [images],
+  );
+}
 
 export default function Page() {
   const [images, setImages] = useState<SelectedImage[]>([]);
@@ -23,6 +34,8 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeSource, setActiveSource] = useState<string | null>(null);
+
+  const frameIndexOf = useFrameIndex(images);
 
   // SPEC §29 state machine, derived rather than stored so it cannot drift.
   const state: AppState = loading
@@ -63,69 +76,79 @@ export default function Page() {
     setActiveSource(null);
   }, [images]);
 
+  const handleRemove = useCallback((index: number) => {
+    setImages((current) => {
+      const target = current[index];
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return current.filter((_, i) => i !== index);
+    });
+  }, []);
+
   const isBusy = state === "ANALYZING";
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <header className="mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight">LifeOS</h1>
-          <p className="mt-2 max-w-2xl text-neutral-400">
-            Drop in screenshots of your assignments, calendar, and messages.
-            Gemma reads them all together, pulls out what matters, and a
-            deterministic planner turns it into an ordered action plan.
+    <main className="min-h-screen bg-paper">
+      <div className="mx-auto max-w-5xl px-6 py-14">
+        <header className="border-b-2 border-ink pb-8">
+          <h1 className="text-5xl font-semibold tracking-tight text-ink">
+            LifeOS
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">
+            Lay your screenshots on one sheet. Gemma reads every frame at once,
+            marks what is due, and circles the clashes. The plan is then worked out
+            in Python, so the order is arithmetic rather than a guess.
           </p>
         </header>
 
         {state !== "RESULT" && (
-          <section className="space-y-6">
+          <section className="mt-10">
             <UploadZone images={images} onChange={setImages} disabled={isBusy} />
 
             <ImagePreview
               images={images}
-              onRemove={(index) =>
-                setImages((current) =>
-                  current.filter((_, i) => i !== index),
-                )
-              }
+              onRemove={handleRemove}
               activeSource={activeSource}
               onSelectSource={setActiveSource}
               disabled={isBusy}
             />
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void handleAnalyze()}
-                disabled={images.length === 0 || isBusy}
-                className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-medium text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {isBusy ? "Analyzing…" : `Analyze ${images.length || ""} image${images.length === 1 ? "" : "s"}`}
-              </button>
-
-              {images.length > 0 && !isBusy && (
+            {images.length > 0 && (
+              <div className="mt-8 flex flex-wrap items-center gap-4">
                 <button
                   type="button"
-                  onClick={handleReset}
-                  className="text-sm text-neutral-400 underline-offset-4 hover:text-neutral-200 hover:underline"
+                  onClick={() => void handleAnalyze()}
+                  disabled={isBusy}
+                  className="sleeve-label border-2 border-ink bg-ink px-6 py-3 text-paper transition hover:bg-transparent hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Clear
+                  {isBusy
+                    ? "Reading"
+                    : `Read ${images.length} frame${images.length === 1 ? "" : "s"}`}
                 </button>
-              )}
-            </div>
+
+                {!isBusy && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="sleeve-label text-ink-2 underline-offset-4 hover:text-grease hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
 
             {isBusy && <AnalysisProgress />}
 
             {error && (
               <div
                 role="alert"
-                className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4"
+                className="mt-8 border-l-2 border-grease bg-grease-wash py-4 pl-5"
               >
-                <p className="font-medium text-rose-300">Analysis failed</p>
-                <p className="mt-1 text-sm text-rose-200/80">{error}</p>
-                <p className="mt-2 text-xs text-rose-200/60">
-                  Check that the backend is running on port 8000 and that
-                  GEMINI_API_KEY is set.
+                <p className="font-semibold text-ink">Could not read the sheet</p>
+                <p className="mt-1 text-sm text-ink-2">{error}</p>
+                <p className="mt-2 text-sm text-ink-2">
+                  Check that the API is running on port 8000 and that
+                  GEMINI_API_KEY is set in backend/.env.
                 </p>
               </div>
             )}
@@ -133,25 +156,15 @@ export default function Page() {
         )}
 
         {state === "RESULT" && analysis && (
-          <div className="space-y-10">
-            <section>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-medium">Your analysis</h2>
-                  <p className="mt-2 max-w-3xl text-neutral-400">
-                    {analysis.summary}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="shrink-0 rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 transition hover:border-neutral-500"
-                >
-                  Start over
-                </button>
-              </div>
+          <div className="mt-12">
+            {/* The caption: what this sheet collectively represents. */}
+            <section className="border-b-2 border-ink pb-8">
+              <h2 className="sleeve-label mb-4 text-ink-3">What this says</h2>
+              <p className="max-w-3xl text-xl leading-relaxed text-ink">
+                {analysis.summary}
+              </p>
 
-              <div className="mt-5 flex flex-wrap gap-2 text-sm">
+              <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
                 {(
                   [
                     ["Tasks", analysis.tasks.length],
@@ -160,113 +173,111 @@ export default function Page() {
                     ["Conflicts", analysis.conflicts.length],
                   ] as const
                 ).map(([label, count]) => (
-                  <span
-                    key={label}
-                    className="rounded-full bg-neutral-800 px-3 py-1 text-neutral-300"
-                  >
-                    {count} {label.toLowerCase()}
-                  </span>
+                  <div key={label} className="flex items-baseline gap-2">
+                    <dt className="sleeve-label text-ink-3">{label}</dt>
+                    <dd className="text-lg font-semibold tabular-nums text-ink">
+                      {count}
+                    </dd>
+                  </div>
                 ))}
-              </div>
+              </dl>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                className="sleeve-label mt-6 border border-rule px-3 py-1.5 text-ink-2 transition hover:border-ink hover:text-ink"
+              >
+                Start a new sheet
+              </button>
             </section>
 
             {analysis.conflicts.length > 0 && (
-              <section>
-                <h3 className="mb-3 text-lg font-medium text-neutral-100">
-                  Conflicts detected
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <section className="mt-12">
+                <h2 className="sleeve-label mb-4 text-ink-3">
+                  Circled on the sheet
+                </h2>
+                <ul className="space-y-4">
                   {analysis.conflicts.map((conflict, index) => (
-                    <ConflictCard
+                    <ConflictMark
                       key={`${conflict.title}-${index}`}
                       conflict={conflict}
-                      activeSource={activeSource}
-                      onSelectSource={setActiveSource}
                     />
                   ))}
-                </div>
+                </ul>
               </section>
             )}
 
             {analysis.plan.length > 0 && (
-              <section>
-                <h3 className="mb-1 text-lg font-medium text-neutral-100">
-                  Action plan
-                </h3>
-                <p className="mb-3 text-sm text-neutral-500">
-                  Ordered in Python, not by the model.
+              <section className="mt-12">
+                <h2 className="sleeve-label mb-1 text-ink-3">The order</h2>
+                <p className="mb-4 text-sm text-ink-2">
+                  Sorted in Python by priority and deadline. The model extracted
+                  the facts; it did not choose this sequence.
                 </p>
-                <ol className="space-y-3">
+                <ol>
                   {analysis.plan.map((item) => (
-                    <PlanCard
-                      key={item.order}
-                      item={item}
-                      total={analysis.plan.length}
-                    />
+                    <PlanRow key={item.order} item={item} />
                   ))}
                 </ol>
               </section>
             )}
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="mt-12 space-y-10">
               {analysis.tasks.length > 0 && (
                 <section>
-                  <h3 className="mb-3 text-lg font-medium text-neutral-100">
-                    Tasks
-                  </h3>
-                  <div className="space-y-3">
+                  <h2 className="sleeve-label mb-3 text-ink-3">Tasks</h2>
+                  <ul>
                     {analysis.tasks.map((task, index) => (
-                      <TaskCard
+                      <TaskRow
                         key={`${task.title}-${index}`}
                         task={task}
+                        frameIndex={frameIndexOf(task.source)}
                         activeSource={activeSource}
                         onSelectSource={setActiveSource}
                       />
                     ))}
-                  </div>
+                  </ul>
                 </section>
               )}
 
-              <div className="space-y-8">
-                {analysis.deadlines.length > 0 && (
-                  <section>
-                    <h3 className="mb-3 text-lg font-medium text-neutral-100">
-                      Deadlines
-                    </h3>
-                    <div className="space-y-3">
-                      {analysis.deadlines.map((deadline, index) => (
-                        <DeadlineCard
-                          key={`${deadline.title}-${index}`}
-                          deadline={deadline}
-                          activeSource={activeSource}
-                          onSelectSource={setActiveSource}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
+              {analysis.deadlines.length > 0 && (
+                <section>
+                  <h2 className="sleeve-label mb-3 text-ink-3">Deadlines</h2>
+                  <ul>
+                    {analysis.deadlines.map((deadline, index) => (
+                      <DeadlineRow
+                        key={`${deadline.title}-${index}`}
+                        deadline={deadline}
+                        frameIndex={frameIndexOf(deadline.source)}
+                        activeSource={activeSource}
+                        onSelectSource={setActiveSource}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )}
 
-                {analysis.events.length > 0 && (
-                  <section>
-                    <h3 className="mb-3 text-lg font-medium text-neutral-100">
-                      Events
-                    </h3>
-                    <div className="space-y-3">
-                      {analysis.events.map((event, index) => (
-                        <EventCard
-                          key={`${event.title}-${index}`}
-                          event={event}
-                          activeSource={activeSource}
-                          onSelectSource={setActiveSource}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
+              {analysis.events.length > 0 && (
+                <section>
+                  <h2 className="sleeve-label mb-3 text-ink-3">Events</h2>
+                  <ul>
+                    {analysis.events.map((event, index) => (
+                      <EventRow
+                        key={`${event.title}-${index}`}
+                        event={event}
+                        frameIndex={frameIndexOf(event.source)}
+                        activeSource={activeSource}
+                        onSelectSource={setActiveSource}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
 
-            <ChatPanel context={analysis} />
+            <div className="mt-12">
+              <ChatPanel context={analysis} />
+            </div>
           </div>
         )}
       </div>
