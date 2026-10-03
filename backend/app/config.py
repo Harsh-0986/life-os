@@ -40,14 +40,18 @@ class Settings(BaseSettings):
     chat_temperature: float = 0.2
     """Slightly looser so chat answers read naturally (SPEC §11)."""
 
-    structured_output_method: str = "function_calling"
+    structured_output_method: str = "prompt_json"
     """How to obtain structured output from the model.
 
-    ``function_calling`` is the default because Gemma does not implement
-    Gemini's strict ``response_json_schema`` parameter, which is what the
+    ``prompt_json`` embeds the JSON Schema in the prompt and asks for
+    ``response_mime_type=application/json``, then validates with Pydantic.
+    It is the default because it is the widest-supported mechanism: the
     ``json_schema`` / ``json_mode`` methods of ``langchain-google-genai``
-    always send. If this method is unavailable, ``llm.py`` transparently
-    falls back to prompt-embedded JSON mode on the second attempt.
+    always send Gemini's strict ``response_json_schema``, which Gemma does
+    not implement, and ``function_calling`` loses nested models because
+    Gemma's schema validator ignores ``$defs``.
+
+    On the second and final attempt ``llm.py`` switches to function calling.
     """
 
     # --- Upload limits (SPEC §21) -------------------------------------------

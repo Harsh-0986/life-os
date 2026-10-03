@@ -91,9 +91,11 @@ def create_model(temperature: float | None = None) -> ChatGoogleGenerativeAI:
 def _analysis_prompt(instruction: str, image_blocks: list[ImageBlock]) -> ChatPromptTemplate:
     """Prompt template carrying the instruction *and* every image.
 
-    All images live in one ``HumanMessage`` (SPEC §8). The blocks are baked
-    into the template because LangChain v1 cannot interpolate a list of
+    All images live in a single ``HumanMessage`` (SPEC §8). The blocks are
+    baked into the template because LangChain v1 cannot interpolate a list of
     multimodal blocks from a template variable — doing so stringifies them.
+    Scalars (``{schema_instruction}``) do interpolate correctly inside a text
+    block, which is how the JSON schema gets attached.
     """
     return ChatPromptTemplate.from_messages(
         [
@@ -101,7 +103,7 @@ def _analysis_prompt(instruction: str, image_blocks: list[ImageBlock]) -> ChatPr
             (
                 "human",
                 [
-                    {"type": "text", "text": instruction},
+                    {"type": "text", "text": instruction + "{schema_instruction}"},
                     *image_blocks,
                 ],
             ),
@@ -109,14 +111,19 @@ def _analysis_prompt(instruction: str, image_blocks: list[ImageBlock]) -> ChatPr
     )
 
 
-def _json_mode_instruction() -> str:
-    """Schema the model must satisfy when function calling is unavailable."""
-    schema = LifeOSAnalysis.model_json_schema()
+def _schema_instruction() -> str:
+    """Schema the model must satisfy in prompt-embedded JSON mode.
+
+    Passed as a template variable rather than concatenated into the template,
+    because the schema is full of ``{`` and ``}`` that LangChain would
+    otherwise parse as template placeholders and fail on.
+    """
+    schema = json.dumps(LifeOSAnalysis.model_json_schema(), indent=2)
     return (
         "\n\nReturn your entire response as a single JSON object conforming to "
         "the JSON Schema below. Output raw JSON only: no prose, no explanation, "
         "no markdown code fences.\n\n"
-        f"{json.dumps(schema, indent=2)}"
+        f"{schema}"
     )
 
 
@@ -131,26 +138,28 @@ def create_analysis_chain(
     Args:
         image_blocks: base64 image blocks, one per uploaded file.
         filenames: original filenames, used for source attribution.
-        method: structured-output strategy; defaults to the configured value.
+        method: ``"prompt_json"`` or ``"function_calling"``.
 
     Returns:
-        An LCEL runnable taking ``{"instruction": ...}`` and returning a
+        An LCEL runnable taking ``{"schema_instruction": ...}`` and returning a
         validated :class:`LifeOSAnalysis`.
     """
     settings = get_settings()
+    method = method or settings.structured_output_method
     instruction = build_analysis_instruction(filenames)
 
     if method == "prompt_json":
+        # Depends only on `response_mime_type`, the widest-supported
+        # structured-output mechanism across model families.
         parser = PydanticOutputParser(pydantic_object=LifeOSAnalysis)
         llm = create_model(settings.analysis_temperature).bind(
             response_mime_type="application/json"
         )
-        prompt = _analysis_prompt(instruction + _json_mode_instruction(), image_blocks)
-        return prompt | llm | parser
+        return _analysis_prompt(instruction, image_blocks) | llm | parser
 
     llm = create_model(settings.analysis_temperature).with_structured_output(
         LifeOSAnalysis,
-        method=method or settings.structured_output_method,
+        method="function_calling",
     )
     return _analysis_prompt(instruction, image_blocks) | llm
 
@@ -158,20 +167,18 @@ def create_analysis_chain(
 def analyze_images(image_blocks: list[ImageBlock], filenames: list[str]) -> LifeOSAnalysis:
     """Run the analysis, with at most two attempts (SPEC §12, §13).
 
-    Attempt 1 uses the configured structured-output method. Attempt 2 falls
-    back to prompt-embedded JSON mode, which only depends on
-    ``response_mime_type`` and works across model families. There is no
-    unbounded loop and no retry middleware.
+    Attempt 1 uses the configured method, ``prompt_json`` by default. Attempt
+    2 switches to function calling for models that reject JSON mode. There is
+    no unbounded loop and no retry middleware.
     """
     settings = get_settings()
-    # Attempt 1 = configured method. Attempt 2 = model-agnostic JSON mode.
-    attempts: tuple[str | None, ...] = (None, "prompt_json")
+    schema_instruction = _schema_instruction()
 
     last_error: Exception | None = None
-    for override in attempts:
+    for override in (None, "function_calling"):
         try:
             chain = create_analysis_chain(image_blocks, filenames, method=override)
-            return chain.invoke({})
+            return chain.invoke({"schema_instruction": schema_instruction})
         except Exception as exc:  # noqa: BLE001 - re-raised below
             last_error = exc
             logger.warning(
