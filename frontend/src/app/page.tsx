@@ -15,7 +15,7 @@ import {
 } from "@/components/Rows";
 import { SourcePreview } from "@/components/SourcePreview";
 import { UploadZone, type SelectedImage } from "@/components/UploadZone";
-import { analyzeImages } from "@/lib/api";
+import { analyzeImages, calendarExportUrl } from "@/lib/api";
 import type { AppState, LifeOSAnalysis } from "@/lib/types";
 
 /** Maps a source filename to its frame position, so citations read as numbers. */
@@ -87,13 +87,41 @@ export default function Page() {
 
   const isBusy = state === "ANALYZING";
 
+  // The nav link is hidden when nothing is exportable, so it never offers a
+  // download that would fail. See CalendarExport for the in-page control.
+  const datedEventCount =
+    analysis?.events.filter((event) => event.date).length ?? 0;
+  const calendarUrl = analysis
+    ? calendarExportUrl(analysis.events)
+    : null;
+
   return (
     <main className="min-h-screen bg-paper">
       <div className="mx-auto max-w-5xl px-6 py-14">
         <header className="border-b-2 border-ink pb-8">
-          <h1 className="text-5xl font-semibold tracking-tight text-ink">
-            LifeOS
-          </h1>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-5xl font-semibold tracking-tight text-ink">
+              LifeOS
+            </h1>
+
+            {/*
+              Calendar export sits beside the wordmark so it is reachable
+              without scrolling past four sections. It is a link rather than a
+              button because it hands the browser a file to download.
+            */}
+            {calendarUrl && (
+              <a
+                href={calendarUrl}
+                download="lifeos.ics"
+                className="sleeve-label border-2 border-ink px-4 py-2.5 text-ink transition hover:bg-ink hover:text-paper"
+              >
+                Export calendar
+                <span className="ml-2 tabular-nums opacity-60">
+                  {datedEventCount}
+                </span>
+              </a>
+            )}
+          </div>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-2">
             Lay your screenshots on one sheet. Gemma reads every frame at once,
             marks what is due, and circles the clashes. The plan is then worked out
@@ -277,6 +305,10 @@ export default function Page() {
             </div>
 
             <div className="mt-12 space-y-10">
+              {/*
+                The download link lives in the header beside the wordmark.
+                This explains why an event may be missing from it.
+              */}
               <CalendarExport events={analysis.events} />
               <ChatPanel context={analysis} />
             </div>
