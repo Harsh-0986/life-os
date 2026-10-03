@@ -10,6 +10,7 @@ FastAPI backend and its values are never returned over HTTP (SPEC §24).
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     chat_temperature: float = 0.2
     """Slightly looser so chat answers read naturally (SPEC §11)."""
 
-    structured_output_method: str = "prompt_json"
+    structured_output_method: Literal["prompt_json", "function_calling"] = "prompt_json"
     """How to obtain structured output from the model.
 
     ``prompt_json`` embeds the JSON Schema in the prompt and asks for
