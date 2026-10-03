@@ -1,5 +1,7 @@
 # LifeOS
 
+Live URL: https://life-os-one-amber.vercel.app/
+
 Lay your screenshots on one sheet. Gemma reads every frame at once, marks what
 is due, and circles the clashes. The order comes out of Python, not out of the
 model.
