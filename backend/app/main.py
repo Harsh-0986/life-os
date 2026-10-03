@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import analyze, chat
+from app.routers import analyze, calendar, chat
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +38,7 @@ app = FastAPI(
     openapi_tags=[
         {"name": "analysis", "description": "Multimodal extraction and planning."},
         {"name": "chat", "description": "Questions answered from the structured analysis."},
+        {"name": "calendar", "description": "Export dated events as an iCalendar file."},
         {"name": "meta", "description": "Liveness and configuration."},
     ],
     docs_url="/docs",
@@ -57,6 +58,7 @@ app.add_middleware(
 
 app.include_router(analyze.router)
 app.include_router(chat.router)
+app.include_router(calendar.router)
 
 
 @app.get("/api/health", tags=["meta"], summary="Liveness and model check")
