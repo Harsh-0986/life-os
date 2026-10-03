@@ -88,3 +88,33 @@ export async function checkHealth(): Promise<{
   if (!response.ok) throw await toApiError(response);
   return response.json();
 }
+
+/**
+ * Build the calendar export URL for a completed analysis.
+ *
+ * The analysis travels as query parameters because the backend only needs the
+ * events to render a file, and there is no session to read it from. Returns
+ * null when nothing is exportable, so the caller can hide the button instead
+ * of offering a link that 404s.
+ */
+export function calendarExportUrl(
+  events: { title: string; date: string | null; time: string | null }[],
+  base = BASE_URL,
+): string | null {
+  const dated = events.filter((event) => event.date);
+  if (dated.length === 0) return null;
+
+  const params = new URLSearchParams();
+  params.set(
+    "events",
+    JSON.stringify(
+      dated.map((event) => ({
+        title: event.title,
+        date: event.date,
+        time: event.time,
+      })),
+    ),
+  );
+
+  return `${base}/api/calendar?${params.toString()}`;
+}

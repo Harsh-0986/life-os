@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 
 import { AnalysisProgress } from "@/components/AnalysisProgress";
+import { CalendarExport } from "@/components/CalendarExport";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ImagePreview } from "@/components/ImagePreview";
 import {
@@ -275,7 +276,8 @@ export default function Page() {
               )}
             </div>
 
-            <div className="mt-12">
+            <div className="mt-12 space-y-10">
+              <CalendarExport events={analysis.events} />
               <ChatPanel context={analysis} />
             </div>
           </div>
