@@ -7,7 +7,6 @@ Live URL: https://life-os-one-amber.vercel.app/
 > A multimodal AI life-admin assistant that turns scattered screenshots into an
 > actionable plan using Gemma.
 
-
 Upload five screenshots — an assignment page, a group chat, an exam schedule, an
 event invite, an interview email. LifeOS reads all five **together**, works out
 what they mean in relation to each other, and hands back an ordered plan you can
@@ -77,13 +76,12 @@ deadline, and the required evaluation work — not generated from scratch.
 
 ## Demo
 
-<!-- TODO: replace the placeholders below with real links before submitting. -->
-
 | | |
 | --- | --- |
 | **Live demo** | https://life-os-one-amber.vercel.app/ |
-| **Demo video** | _add URL_ |
-| **Screenshots** | _see `demo/`_ |
+| **Demo video** | [`demo/lifeos-demo.mp4`](demo/lifeos-demo.mp4) — 39s walkthrough ([poster](demo/video-poster.jpg)) |
+| **Screenshots** | [below](#screenshots) · [`demo/`](demo/) |
+| **Sample input** | [`demo/samples/`](demo/samples/) — the five screenshots used in every shot |
 
 **Walkthrough**
 
@@ -104,6 +102,59 @@ Interview → Oct 8, 11 AM
 DBMS exam → Oct 9, 10 AM
 College event → Oct 7–8
 ```
+
+## Screenshots
+
+Every image below is a capture of the **running application**: the five sample
+screenshots in [`demo/samples/`](demo/samples/), one Gemma call, and the real
+response rendered. Nothing is mocked, and the conflicts and the ordering below
+are exactly what the backend returned.
+
+**What goes in** — the five frames, one request:
+
+<table>
+<tr>
+<td><img src="demo/samples/assignment.png" width="180" alt="Assignment screenshot"></td>
+<td><img src="demo/samples/group_chat.png" width="180" alt="Group chat screenshot"></td>
+<td><img src="demo/samples/exam_schedule.png" width="180" alt="Exam schedule screenshot"></td>
+<td><img src="demo/samples/event_invite.png" width="180" alt="Event invite screenshot"></td>
+<td><img src="demo/samples/interview_email.png" width="180" alt="Interview email screenshot"></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%"><img src="demo/screenshot-1-upload.png" alt="LifeOS upload screen"><br><sub><b>1.</b> The sheet, before anything happens. Assignments, calendars, group chats — anything you are juggling.</sub></td>
+<td width="50%"><img src="demo/screenshot-2-frames-added.png" alt="Five screenshots added"><br><sub><b>2.</b> Five frames added and numbered 01–05. Each one stays open, so you can see what you handed over.</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="demo/screenshot-3-result.png" width="900" alt="The full result sheet"><br><sub><b>3.</b> The result sheet: the caption, the counts, the conflicts, the plan, the calendar export and grounded chat — all from that single request.</sub></td>
+</tr>
+</table>
+
+**The conflicts it found.** Grease pencil, because this is what it looks like
+when a week quietly collides with itself:
+
+<img src="demo/screenshot-4-conflict.png" width="900" alt="Conflicts detected">
+
+Three clashes, none of which any single screenshot knows about: the report is
+due on the first day of the fest, the interview lands on the second, and the
+fest takes both days.
+
+**The order.** Model extracts the facts; Python picks the sequence:
+
+<img src="demo/screenshot-5-plan.png" width="900" alt="The prioritized plan">
+
+`Train ML model` first — *"must be done before evaluation and report writing"* —
+then the interview, then the report, then the evaluation. The model never
+chooses this order.
+
+**Asking why.** The answer is grounded in the extracted facts — and when the
+sheet does not say, LifeOS says so instead of guessing:
+
+<img src="demo/screenshot-6-chat.png" width="900" alt="Grounded chat answer">
+
+---
 
 ## Why Gemma?
 
