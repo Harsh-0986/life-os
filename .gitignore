@@ -26,3 +26,5 @@ venv/
 *.pem
 .idea/
 .vscode/
+# Hyperframes /brag build output (regenerate with the skill)
+brag-output*/
